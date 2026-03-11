@@ -1,0 +1,16 @@
+# Фрагмент для /etc/sudoers.d/ (например bot-telegram).
+# Замените 'apache' на пользователя, под которым работает PHP-FPM (nginx, www-data и т.д.).
+# Установка: sudo visudo -c -f /etc/sudoers.d/bot-telegram && sudo chmod 440 /etc/sudoers.d/bot-telegram
+
+apache ALL=(root) NOPASSWD: /usr/local/bin/bot-pm2-list.sh
+apache ALL=(root) NOPASSWD: /usr/local/bin/bot-pm2-restart.sh *
+apache ALL=(root) NOPASSWD: /usr/local/bin/bot-pm2-stop.sh *
+apache ALL=(root) NOPASSWD: /usr/local/bin/bot-pm2-start.sh *
+apache ALL=(root) NOPASSWD: /usr/local/bin/bot-restart-service.sh nginx
+apache ALL=(root) NOPASSWD: /usr/local/bin/bot-restart-service.sh php-fpm
+apache ALL=(root) NOPASSWD: /usr/local/bin/bot-restart-service.sh mysqld
+apache ALL=(root) NOPASSWD: /usr/local/bin/bot-restart-service.sh mariadb
+apache ALL=(root) NOPASSWD: /usr/local/bin/bot-process-pid.sh stop *
+apache ALL=(root) NOPASSWD: /usr/local/bin/bot-process-pid.sh restart *
+apache ALL=(root) NOPASSWD: /usr/local/bin/bot-reboot.sh
+apache ALL=(root) NOPASSWD: /usr/local/bin/bot-fail2ban.sh *

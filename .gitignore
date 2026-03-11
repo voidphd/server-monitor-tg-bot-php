@@ -1,0 +1,28 @@
+# Секреты — не коммитить
+config.php
+.env
+.env.*
+
+# Логи и кэш
+*.log
+*.tmp
+.cache/
+state/
+
+# Документация ИИ и внутренние заметки (не для репозитория)
+*idea*.md
+*process*.md
+*report*.md
+*-PLAN.md
+docs/internal/
+notes/
+ai/
+
+# Системные и редакторы
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
