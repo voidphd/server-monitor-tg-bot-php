@@ -30,6 +30,8 @@ Lightweight Linux server monitoring via a Telegram bot: RAM, CPU, disk, Nginx, P
 
 Settings (bot token, webhook secret, allowed username, site list for "Sites", **enabled modules**) are editable in the browser. `index.php` is the form and saves to `config.php`. **"Detect server technologies"** runs `scripts/detect-technologies.php`: it checks for Nginx, PM2, PHP-FPM, MySQL/MariaDB, Docker and suggests modules (RAM, CPU, Disk are always suggested).
 
+The **"Cron / disk"** tab sets the **root disk usage threshold (%)** for **`server-monitor.sh`** (server cron). On save, **`monitor-threshold.env`** is written next to `config.php` with `DISK_ALERT_THRESHOLD_PERCENT`. If that file exists, the monitor script sources it after `/etc/server-monitor.conf`. Telegram alerts: first when the threshold is first reached, then only when usage **increases** (e.g. after 90%, the next alert at 91% or higher).
+
 **Important:** protect the settings UI with a password. Use a separate (sub)domain (e.g. `tg.example.com`) and Nginx `auth_basic`.
 
 ### Password protection (Nginx)

@@ -29,6 +29,7 @@ $translations = [
         'error_write' => 'Не удалось записать config.php. Проверьте права на каталог.',
         'tab_modules' => 'Модули',
         'tab_telegram' => 'Телеграм',
+        'tab_monitor' => 'Cron / диск',
         'hint_modules' => 'Отметьте модули, которые будут отображаться в меню бота. Иконка ⚙️ открывает настройки модуля (если есть).',
         'module_settings_btn_title' => 'Настройки модуля',
         'output_label' => 'Выводит:',
@@ -63,6 +64,9 @@ $translations = [
         'close_btn' => 'Закрыть',
         'toggle_edit_title' => 'Разрешить редактирование',
         'toggle_lock_title' => 'Запретить редактирование',
+        'disk_threshold_label' => 'Порог заполнения диска / для уведомлений в Telegram (%)',
+        'disk_threshold_hint' => 'Используется скриптом server-monitor.sh (cron). Первое сообщение — при первом достижении этого процента; следующее — только если занятость выросла (например, с 90% до 91%). Ниже порога счётчик сбрасывается. Значение записывается в файл monitor-threshold.env рядом с config.php.',
+        'warn_monitor_env' => 'Не удалось записать monitor-threshold.env (проверьте права на каталог). Порог в config.php сохранён.',
     ],
     'en' => [
         'title' => 'Settings — Telegram Server Monitor',
@@ -72,6 +76,7 @@ $translations = [
         'error_write' => 'Could not write config.php. Check directory permissions.',
         'tab_modules' => 'Modules',
         'tab_telegram' => 'Telegram',
+        'tab_monitor' => 'Cron / disk',
         'hint_modules' => 'Check the modules to show in the bot menu. The ⚙️ icon opens module settings (if available).',
         'module_settings_btn_title' => 'Module settings',
         'output_label' => 'Output:',
@@ -106,6 +111,9 @@ $translations = [
         'close_btn' => 'Close',
         'toggle_edit_title' => 'Allow editing',
         'toggle_lock_title' => 'Lock editing',
+        'disk_threshold_label' => 'Root disk alert threshold for Telegram (%)',
+        'disk_threshold_hint' => 'Used by server-monitor.sh (cron). First alert when this % is first reached; further alerts only if usage increases (e.g. 90% → 91%). Below the threshold the counter resets. Written to monitor-threshold.env next to config.php.',
+        'warn_monitor_env' => 'Could not write monitor-threshold.env (check directory permissions). Threshold saved in config.php.',
     ],
 ];
 
@@ -156,6 +164,7 @@ $defaults = [
     'process_list_limit'    => 10,
     'allow_process_stop'    => false,
     'allow_process_restart' => false,
+    'disk_alert_threshold_percent' => 90,
 ];
 
 // Ответ JSON для определения технологий (action=detect)
@@ -181,6 +190,7 @@ $config = array_merge($defaults, $config);
 
 $saved = false;
 $error = '';
+$warnMonitorEnv = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = trim((string) ($_POST['bot_token'] ?? ''));
@@ -200,6 +210,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $processListLimit = max(1, min(25, $processListLimit));
     $allowProcessStop = !empty($_POST['allow_process_stop']);
     $allowProcessRestart = !empty($_POST['allow_process_restart']);
+    $diskAlertThreshold = (int) ($_POST['disk_alert_threshold_percent'] ?? $defaults['disk_alert_threshold_percent']);
+    $diskAlertThreshold = max(1, min(99, $diskAlertThreshold));
 
     if ($token === '' || $secret === '') {
         $error = $t['error_required'];
@@ -213,6 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $php .= "    'process_list_limit'    => " . $processListLimit . ",\n";
         $php .= "    'allow_process_stop'    => " . ($allowProcessStop ? 'true' : 'false') . ",\n";
         $php .= "    'allow_process_restart' => " . ($allowProcessRestart ? 'true' : 'false') . ",\n";
+        $php .= "    'disk_alert_threshold_percent' => " . $diskAlertThreshold . ",\n";
         $php .= "];\n";
 
         if (@file_put_contents($configPath, $php) !== false) {
@@ -221,7 +234,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'bot_token' => $token, 'webhook_secret' => $secret, 'allowed_username' => $username,
                 'sites_domains' => $sites, 'modules' => $modules,
                 'process_list_limit' => $processListLimit, 'allow_process_stop' => $allowProcessStop, 'allow_process_restart' => $allowProcessRestart,
+                'disk_alert_threshold_percent' => $diskAlertThreshold,
             ];
+            $envLine = 'DISK_ALERT_THRESHOLD_PERCENT=' . $diskAlertThreshold . "\n";
+            $envPath = __DIR__ . '/monitor-threshold.env';
+            if (@file_put_contents($envPath, $envLine) === false) {
+                $warnMonitorEnv = true;
+            }
         } else {
             $error = $t['error_write'];
         }
@@ -313,6 +332,9 @@ $webhookUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' 
         <?php if ($saved): ?>
             <div class="msg success"><?= htmlspecialchars($t['saved_ok'], ENT_QUOTES, 'UTF-8') ?></div>
         <?php endif; ?>
+        <?php if ($warnMonitorEnv): ?>
+            <div class="msg error"><?= htmlspecialchars($t['warn_monitor_env'], ENT_QUOTES, 'UTF-8') ?></div>
+        <?php endif; ?>
         <?php if ($error !== ''): ?>
             <div class="msg error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
         <?php endif; ?>
@@ -321,6 +343,7 @@ $webhookUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' 
             <div class="tabs" role="tablist">
                 <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="modules"><?= htmlspecialchars($t['tab_modules'], ENT_QUOTES, 'UTF-8') ?></button>
                 <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="telegram"><?= htmlspecialchars($t['tab_telegram'], ENT_QUOTES, 'UTF-8') ?></button>
+                <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="monitor"><?= htmlspecialchars($t['tab_monitor'], ENT_QUOTES, 'UTF-8') ?></button>
             </div>
 
             <div id="panel-modules" class="tab-panel active" role="tabpanel">
@@ -371,6 +394,12 @@ $webhookUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' 
                 </div>
                 <button type="button" id="btn-detect" class="btn-secondary" style="margin-top: 0.5rem;"><?= htmlspecialchars($t['btn_detect'], ENT_QUOTES, 'UTF-8') ?></button>
                 <div class="hint" id="detect-hint" style="margin-top: 0.25rem; display: none;"></div>
+            </div>
+
+            <div id="panel-monitor" class="tab-panel" role="tabpanel">
+                <p class="hint" style="margin-bottom: 1rem;"><?= htmlspecialchars($t['disk_threshold_hint'], ENT_QUOTES, 'UTF-8') ?></p>
+                <label for="disk_alert_threshold_percent"><?= htmlspecialchars($t['disk_threshold_label'], ENT_QUOTES, 'UTF-8') ?></label>
+                <input type="number" id="disk_alert_threshold_percent" name="disk_alert_threshold_percent" value="<?= (int) ($config['disk_alert_threshold_percent'] ?? 90) ?>" min="1" max="99" style="width: 5rem; margin-top: 0.25rem;">
             </div>
 
             <div id="panel-telegram" class="tab-panel" role="tabpanel">

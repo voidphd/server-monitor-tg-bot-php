@@ -9,6 +9,9 @@ config.php
 .cache/
 state/
 
+# Порог диска для server-monitor.sh (генерируется из админки tg.*)
+monitor-threshold.env
+
 # Документация ИИ и внутренние заметки (не для репозитория)
 *idea*.md
 *process*.md

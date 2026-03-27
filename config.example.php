@@ -12,6 +12,8 @@
  * process_list_limit    — сколько процессов выводить в RAM/CPU (1–25, рекомендуется 10)
  * allow_process_stop    — разрешить остановку процесса по PID из бота (true/false)
  * allow_process_restart — разрешить перезапуск процесса по PID из бота (true/false)
+ * disk_alert_threshold_percent — порог заполнения / для cron server-monitor.sh (1–99, по умолчанию 90);
+ *   в Telegram уведомление при первом достижении порога и далее только при росте %; см. monitor-threshold.env
  */
 return [
     'bot_token'             => 'YOUR_BOT_TOKEN_FROM_BOTFATHER',
@@ -22,4 +24,5 @@ return [
     'process_list_limit'     => 10,
     'allow_process_stop'     => false,
     'allow_process_restart'  => false,
+    'disk_alert_threshold_percent' => 90,
 ];
